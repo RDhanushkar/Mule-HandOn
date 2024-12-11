@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="3de50d7e-df99-4c2f-b2ae-de1cd1033690" >
+		<http:listener-connection host="0.0.0.0" port="8085" />
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="8b9d1980-ffe0-46dd-8a5e-5a77d20a5803" >
+		<salesforce:basic-connection username="dhanu@account.com" password="Spear@1234" securityToken="RfMj2unmLEjYC8ZVPKdChnrFe" />
+	</salesforce:sfdc-config>
+	<flow name="create-recordFlow" doc:id="b93f545b-e77f-495a-af55-04f89af6d3bd" >
+		<http:listener doc:name="create" doc:id="1c846c07-490a-45e6-a7b6-ff61a60f56a8" config-ref="HTTP_Listener_config" path="/create"/>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="953891f5-346a-45bd-b04d-637abb6bb5e4" />
+		<ee:transform doc:name="Transform Message" doc:id="be156063-6fa3-44be-a9b2-d245e2561ef5">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+import * from dw::util::Math
+---
+{
+  accountNumber: payload.accountDetails.accountNumber,
+  balance: payload.accountDetails.balance,
+  customerName: payload.accountHolder.firstName ++ " " ++ payload.accountHolder.lastName,
+  custID: now() as Number {format: "yyyyMMddHHmmss"} * 1000 + floor(random() * 1000)
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="ee55b6f5-5615-4538-bb57-da605d5f7eee">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[
+	{
+		CustID__c: payload.custID,
+		CustName__c :payload.customerName,
+		AccountNo__c :payload.accountNumber,
+		Balance__c:  payload.balance,
+	}
+]
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create type="BankDetails__c" doc:name="Create" doc:id="8fab48e6-eb87-46db-a5d6-f5d97c202108" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="48b2d214-b170-460e-8271-e551e31dd95d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "statusCode": payload.items.statusCode,
+  "message": payload.items.message
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="ae7ad00d-8f77-45c1-b47e-cd98ba2c2f6f" message="#[payload]"/>
+	</flow>
+</mule>
