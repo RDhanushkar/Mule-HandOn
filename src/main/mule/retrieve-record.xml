@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="retrieve-recordFlow" doc:id="5ff96709-9045-4295-a824-4fa1f4df0f52" >
+		<http:listener doc:name="Listener" doc:id="25cd83b7-38d2-4efe-897e-ff56b0f040de" config-ref="HTTP_Listener_config" path="/get"/>
+		<salesforce:query doc:name="Query" doc:id="5f4ae19b-5325-4882-905f-5a2420f53e20" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[Select ID,CustID__c,CustName__c,AccountNo__c,Balance__c from BankDetails__c]]></salesforce:salesforce-query>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="ea097c52-6ec2-4655-b630-176c687d245e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map	((item,index) -> 
+	{
+		Id:item.Id,
+		CustID:item.CustID__c,
+		CustomerName:item.CustName__c,
+		AccountNo:item.AccountNo__c,
+		Balance:item.Balance__c
+	}
+)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
